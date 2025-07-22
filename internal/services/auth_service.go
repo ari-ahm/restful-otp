@@ -99,7 +99,6 @@ func (s *authService) VerifyLogin(ctx context.Context, phone, otp string) (strin
 	}
 
 	if dbOTP.FailedAttempts >= maxAttempts {
-		_ = s.repo.DeleteOTP(ctx, dbOTP.ID)
 		return "", ErrTooManyAttempts
 	}
 
