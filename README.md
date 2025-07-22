@@ -42,13 +42,12 @@ You can use a tool like the [Swagger Editor](https://editor.swagger.io/) to view
 ### Prerequisites
 
 -   [Docker](https://www.docker.com/get-started)
--   [Docker Compose](https://docs.docker.com/compose/install/)
 
 ### Installation & Setup
 
 1.  **Clone the repository:**
     ```bash
-    git clone <your-repo-url>
+    git clone https://github.com/ari-ahm/restful-otp
     cd restful-otp
     ```
 
@@ -56,7 +55,7 @@ You can use a tool like the [Swagger Editor](https://editor.swagger.io/) to view
     Use Docker Compose to build the Go application image and start the API and PostgreSQL containers.
 
     ```bash
-    docker-compose up --build
+    docker compose up --build
     ```
 
     The API will be running and accessible at `http://localhost:8080`.
@@ -73,7 +72,7 @@ You can use a tool like the [Swagger Editor](https://editor.swagger.io/) to view
 To stop the containers and remove the database volume (for a complete reset), run:
 
 ```bash
-docker-compose down -v
+docker compose down -v
 ```
 
 ## Testing
@@ -88,9 +87,9 @@ This command will discover and run all `_test.go` files in the project.
 
 ## Environment Variables
 
-The application is configured using environment variables, which are set in the `docker-compose.yml` file for local development.
+The application is configured using environment variables, which are set in the `compose.yml` file for local development.
 
-| Variable                 | Description                                                  | Default Value (in `docker-compose.yml`) |
+| Variable                 | Description                                                  | Default Value (in `compose.yml`) |
 | ------------------------ | ------------------------------------------------------------ | --------------------------------------- |
 | `PORT`                   | The port on which the Go API server will listen.             | `8080`                                  |
 | `JWT_SECRET_KEY`         | A long, secret key used for signing JWTs.                    | `a-very-secure-secret-key...`           |
@@ -99,3 +98,16 @@ The application is configured using environment variables, which are set in the 
 | `DB_USER`                | The username for the database connection.                    | `postgres`                              |
 | `DB_PASSWORD`            | The password for the database connection.                    | `mysecretpassword`                      |
 | `DB_NAME`                | The name of the database to use.                             | `restful_otp_db`                        |
+
+
+## Technology Choices & Trade-offs
+
+### Why PostgreSQL?
+
+PostgreSQL was chosen for its optimal balance of reliability and simplicity for this application's needs.
+
+While an in-memory store like **Redis** would be technically faster, the primary performance bottleneck in an OTP system is always the external SMS network call, which can take several seconds. The 1-2 milliseconds saved by using Redis would be imperceptible to the end-user.
+
+In exchange for this negligible performance gain, using Redis would introduce significant architectural complexity, requiring the management of two separate databases.
+
+Therefore, PostgreSQL is the more robust and maintainable choice, providing world-class data integrity (ACID compliance) with more than sufficient performance for this workload.
