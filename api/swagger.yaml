@@ -1,0 +1,137 @@
+openapi: 3.0.3
+info:
+  title: "RESTful OTP Service API"
+  description: "An API for user authentication using phone numbers and one-time passwords (OTP) sent via SMS. Users can sign up or sign in with their phone number, receive an OTP, and exchange it for a JWT."
+  version: "1.0.0"
+servers:
+  - url: "http://localhost:8080/api/v1"
+    description: "Development server"
+
+paths:
+  /auth/initiate:
+    post:
+      tags:
+        - "Authentication"
+      summary: "Initiate Sign-up / Sign-in"
+      description: |
+        Initiates the authentication process for a given phone number.
+        If the phone number is new, this begins the sign-up process. If it already exists, it begins the sign-in process.
+        The service will generate a one-time password (OTP) and send it to the provided phone number via SMS.
+      requestBody:
+        description: "The user's phone number to which the OTP will be sent."
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InitiateRequest"
+            example:
+              phoneNumber: "+989123456789"
+      responses:
+        '202':
+          description: "Accepted. The OTP has been successfully sent to the user's phone number."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InitiateResponse"
+              example:
+                message: "OTP has been sent to your phone number. Please verify to continue."
+        '400':
+          description: "Bad Request. The phone number provided is invalid."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Invalid phone number format."
+
+  /auth/verify:
+    post:
+      tags:
+        - "Authentication"
+      summary: "Verify OTP and Get JWT"
+      description: "Verifies the OTP sent to a user's phone number and, if valid, returns a JSON Web Token (JWT) for authenticating future requests."
+      requestBody:
+        description: "The user's phone number and the OTP they received."
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyRequest"
+            example:
+              phoneNumber: "+989123456789"
+              otp: "123456"
+      responses:
+        '200':
+          description: "OK. The OTP is valid and a JWT has been issued."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerifyResponse"
+        '400':
+          description: "Bad Request. The request format is invalid."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "OTP must be a 6-digit string."
+        '401':
+          description: "Unauthorized. The OTP is invalid or has expired."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Invalid or expired OTP."
+
+components:
+  schemas:
+    InitiateRequest:
+      type: object
+      properties:
+        phoneNumber:
+          type: string
+          description: "The user's phone number in E.164 format."
+          example: "+989123456789"
+      required:
+        - phoneNumber
+
+    InitiateResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: "A confirmation message indicating the OTP was sent."
+          example: "OTP has been sent to your phone number."
+
+    VerifyRequest:
+      type: object
+      properties:
+        phoneNumber:
+          type: string
+          description: "The user's phone number in E.164 format."
+          example: "+989123456789"
+        otp:
+          type: string
+          description: "The 6-digit one-time password sent to the user."
+          example: "123456"
+          minLength: 6
+          maxLength: 6
+      required:
+        - phoneNumber
+        - otp
+
+    VerifyResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: "A JSON Web Token (JWT) for session authentication."
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: "A message describing the error."
