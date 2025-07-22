@@ -1,8 +1,19 @@
 openapi: 3.0.3
 info:
   title: "RESTful OTP Service API"
-  description: "An API for user authentication using phone numbers and one-time passwords (OTP) sent via SMS. Users can sign up or sign in with their phone number, receive an OTP, and exchange it for a JWT."
-  version: "1.0.0"
+  description: |
+    An API for user authentication using phone numbers and one-time passwords (OTP).
+    
+    **Authentication Flow:**
+    1.  A user initiates sign-in/sign-up by providing their phone number to the `/auth/initiate` endpoint.
+    2.  The service sends a 6-digit OTP to that number (simulated in logs).
+    3.  The user submits the phone number and the received OTP to the `/auth/verify` endpoint.
+    4.  Upon successful verification, the user receives a JWT for authenticating future requests.
+    
+    **Security Features:**
+    - Rate limiting on OTP requests to prevent abuse.
+    - A limit on failed verification attempts to prevent online brute-force attacks.
+  version: "1.1.0"
 servers:
   - url: "http://localhost:8080/api/v1"
     description: "Development server"
@@ -15,8 +26,8 @@ paths:
       summary: "Initiate Sign-up / Sign-in"
       description: |
         Initiates the authentication process for a given phone number.
-        If the phone number is new, this begins the sign-up process. If it already exists, it begins the sign-in process.
-        The service will generate a one-time password (OTP) and send it to the provided phone number via SMS.
+        This endpoint is rate-limited. If called too frequently for the same number, it will return a 429 error.
+        On success, the service generates an OTP and sends it to the provided phone number (simulated via server logs).
       requestBody:
         description: "The user's phone number to which the OTP will be sent."
         required: true
@@ -32,7 +43,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InitiateResponse"
+                $ref: "#/components/schemas/SuccessMessage"
               example:
                 message: "OTP has been sent to your phone number. Please verify to continue."
         '400':
@@ -42,14 +53,22 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
               example:
-                error: "Invalid phone number format."
+                error: "Invalid phone number format. Please use E.164 format (e.g., +989123456789)."
+        '429':
+          description: "Too Many Requests. The user has requested an OTP too recently."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "You must wait 45 seconds before requesting another OTP."
 
   /auth/verify:
     post:
       tags:
         - "Authentication"
       summary: "Verify OTP and Get JWT"
-      description: "Verifies the OTP sent to a user's phone number and, if valid, returns a JSON Web Token (JWT) for authenticating future requests."
+      description: "Verifies the OTP sent to a user's phone number. If valid, returns a JWT. If the OTP is incorrect too many times, it will be invalidated."
       requestBody:
         description: "The user's phone number and the OTP they received."
         required: true
@@ -74,15 +93,30 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
               example:
-                error: "OTP must be a 6-digit string."
+                error: "Phone number and OTP are required"
         '401':
-          description: "Unauthorized. The OTP is invalid or has expired."
+          description: "Unauthorized. The OTP is invalid, has expired, or too many failed attempts have been made."
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-              example:
-                error: "Invalid or expired OTP."
+              examples:
+                invalid_otp:
+                  summary: "Invalid OTP"
+                  value:
+                    error: "invalid otp"
+                expired_otp:
+                  summary: "Expired OTP"
+                  value:
+                    error: "otp has expired"
+                no_otp:
+                  summary: "No OTP Found"
+                  value:
+                    error: "no pending otp found for this number"
+                too_many_attempts:
+                  summary: "Too Many Attempts"
+                  value:
+                    error: "too many failed attempts, please request a new otp"
 
 components:
   schemas:
@@ -96,12 +130,12 @@ components:
       required:
         - phoneNumber
 
-    InitiateResponse:
+    SuccessMessage:
       type: object
       properties:
         message:
           type: string
-          description: "A confirmation message indicating the OTP was sent."
+          description: "A confirmation message."
           example: "OTP has been sent to your phone number."
 
     VerifyRequest:
@@ -127,7 +161,7 @@ components:
         token:
           type: string
           description: "A JSON Web Token (JWT) for session authentication."
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNTgyNmVjZmUtYzE2OC00YmFmLTk3ZTQtNjkzMzgyMjAyYTczIiwiZXhwIjoxNzUzMjkzNTc3fQ.mEozt2WAxbBimvjzj2_z4U0ZM9ZsISF_j4uGksvU-20"
 
     Error:
       type: object
