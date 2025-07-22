@@ -127,6 +127,7 @@ func (s *authService) VerifyLogin(ctx context.Context, phone, otp string) (strin
 			log.Printf("repository.CreateUser error: %v", err)
 			return "", ErrInternal
 		}
+		log.Printf("New user created with ID %s for phone number %s", user.ID, phone)
 	}
 
 	expirationTime := time.Now().Add(24 * time.Hour)
