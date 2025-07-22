@@ -1,9 +1,38 @@
-version: '3.8'
-
 services:
+  # The Go API service
   api:
     build: .
     container_name: restful-otp-api
     ports:
       - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=mysecretpassword
+      - DB_NAME=restful_otp_db
+      - PORT=8080
+      - JWT_SECRET_KEY=a-very-secure-secret-key-that-is-long-enough-for-hs256
     restart: unless-stopped
+
+  # The PostgreSQL Database service
+  db:
+    image: postgres:16-alpine
+    container_name: restful-otp-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_DB: restful_otp_db
+    ports:
+      - "5432:5432"
+    volumes:
+      # This line mounts your init script into the container.
+      - ./db/init/init.sql:/docker-entrypoint-initdb.d/init.sql
+      # This line persists the database data after initialization.
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
